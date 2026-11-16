@@ -131,6 +131,39 @@ namespace polygons {
         friend std::ostream& operator<<(std::ostream& stream, const Polygon &polygon);
         friend std::istream& operator>>(std::istream& stream, Polygon &polygon);
     };
+
+    class Triangle final : public Polygon {
+    protected:
+        void printName(std::ostream& stream) const override;
+        void printAttributes(std::ostream& stream) const override;
+        std::istream& read(std::istream& stream) override;
+    public:
+        explicit Triangle(points_vec&& points) noexcept;
+        [[nodiscard]] bool isValid() const noexcept override;
+        [[nodiscard]] bool isEquilateral() const noexcept;
+    };
+
+    class Square final : public Polygon {
+    protected:
+        void printName(std::ostream& stream) const override;
+        void printAttributes(std::ostream& stream) const override;
+        std::istream& read(std::istream& stream) override;
+    public:
+        explicit Square(points_vec&& points) noexcept;
+        [[nodiscard]] bool isValid() const noexcept override;
+        [[nodiscard]] double side() const noexcept;
+    };
+
+    class Pentagon final : public Polygon {
+    protected:
+        void printName(std::ostream& stream) const override;
+        void printAttributes(std::ostream& stream) const override;
+        std::istream& read(std::istream& stream) override;
+    public:
+        explicit Pentagon(points_vec&& points) noexcept;
+        [[nodiscard]] bool isValid() const noexcept override;
+        [[nodiscard]] bool isRegular() const noexcept;
+    };
 }
 
 

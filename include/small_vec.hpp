@@ -118,24 +118,31 @@ namespace small_vec {
             return *this;
         }
 
-        small_vec(small_vec&& other) noexcept(std::is_nothrow_move_constructible_v<T>)
+        small_vec(small_vec&& other) noexcept(std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>)
         : capacity_(other.capacity_)
         {
             if (!other.is_small()) {
                 data_= other.data_;
                 size_ = other.size_;
             } else {
-                std::size_t constructed = 0;
-                try {
-                    for (; constructed < other.size_; ++constructed) {
-                        std::construct_at(data_+ constructed, std::move_if_noexcept(other.data_[constructed]));
+                if constexpr (std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>) {
+                    for (; size_ < other.size_; ++size_) {
+                        std::construct_at(data_ + size_, std::move_if_noexcept(other.data_[size_]));
                     }
-                } catch (...) {
-                    std::destroy_n(data_, constructed);
-                    throw;
+                    std::destroy_n(other.data_, other.size_);
+                } else {
+                    std::size_t constructed = 0;
+                    try {
+                        for (; constructed < other.size_; ++constructed) {
+                            std::construct_at(data_ + constructed, std::move_if_noexcept(other.data_[constructed]));
+                        }
+                    } catch (...) {
+                        std::destroy_n(data_, constructed);
+                        throw;
+                    }
+                    size_ = other.size_;
+                    std::destroy_n(other.data_, size_);
                 }
-                size_ = other.size_;
-                std::destroy_n(other.data_, size_);
             }
 
             other.data_= other.stack_ptr();
@@ -180,13 +187,21 @@ namespace small_vec {
                 }
 
                 std::size_t constructed = 0;
-                try {
+                if constexpr (std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>) {
                     for (; constructed < diff; ++constructed) {
-                        std::construct_at(less.data_+ min_size+ constructed, std::move_if_noexcept(greater.data_[constructed + min_size]));
+                        std::construct_at(less.data_ + min_size + constructed,
+                                          std::move_if_noexcept(greater.data_[constructed + min_size]));
                     }
-                } catch (...) {
-                    std::destroy_n(less.data_+ min_size, constructed);
-                    throw;
+                } else {
+                    try {
+                        for (; constructed < diff; ++constructed) {
+                            std::construct_at(less.data_ + min_size + constructed,
+                                              std::move_if_noexcept(greater.data_[constructed + min_size]));
+                        }
+                    } catch (...) {
+                        std::destroy_n(less.data_ + min_size, constructed);
+                        throw;
+                    }
                 }
 
                 std::destroy_n(greater.data_+ min_size, diff);
@@ -203,13 +218,21 @@ namespace small_vec {
                 std::size_t heap_cap = heap.capacity_;
 
                 std::size_t constructed = 0;
-                try {
+                if constexpr (std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>) {
                     for (; constructed < small.size_; ++constructed) {
-                        std::construct_at(heap.stack_ptr() + constructed, std::move_if_noexcept(small.data_[constructed]));
+                        std::construct_at(heap.stack_ptr() + constructed,
+                                          std::move_if_noexcept(small.data_[constructed]));
                     }
-                } catch (...) {
-                    std::destroy_n(heap.stack_ptr(), constructed);
-                    throw;
+                } else {
+                    try {
+                        for (; constructed < small.size_; ++constructed) {
+                            std::construct_at(heap.stack_ptr() + constructed,
+                                              std::move_if_noexcept(small.data_[constructed]));
+                        }
+                    } catch (...) {
+                        std::destroy_n(heap.stack_ptr(), constructed);
+                        throw;
+                    }
                 }
                 std::destroy_n(small.data_, small.size_);
 

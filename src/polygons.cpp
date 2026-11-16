@@ -1,4 +1,6 @@
 #include "polygons.hpp"
+#include <algorithm>
+#include <numbers>
 #include <utility>
 #include <cmath>
 #include <iostream>
@@ -6,6 +8,31 @@
 
 namespace polygons {
     namespace {
+        double distance(const Point& a, const Point& b) noexcept {
+            return std::hypot(a.x - b.x, a.y - b.y);
+        }
+
+        bool nearlyEqual(double a, double b) noexcept {
+            return std::fabs(a - b) <= EPS * std::max({1.0, std::fabs(a), std::fabs(b)});
+        }
+
+        bool validVertices(std::span<const Point> points, std::size_t expected) noexcept {
+            if (points.size() != expected) {
+                return false;
+            }
+
+            double twiceArea = 0.0;
+            for (std::size_t i = 0; i < points.size(); ++i) {
+                const Point& current = points[i];
+                const Point& next = points[(i + 1) % points.size()];
+                if (!std::isfinite(current.x) || !std::isfinite(current.y) || distance(current, next) <= EPS) {
+                    return false;
+                }
+                twiceArea += current.x * next.y - next.x * current.y;
+            }
+            return std::isfinite(twiceArea) && std::fabs(twiceArea) > EPS;
+        }
+
         int orientation(Point a, Point b, Point c, double eps) noexcept {
             double val = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
             if (std::fabs(val) < eps) {
@@ -152,6 +179,147 @@ namespace polygons {
 
     std::istream& operator>>(std::istream& stream, Polygon& polygon) {
         return polygon.read(stream);
+    }
+
+    Triangle::Triangle(points_vec&& points) noexcept : Polygon(std::move(points)) {}
+
+    bool Triangle::isValid() const noexcept {
+        const auto& vertices = points();
+        return validVertices(std::span(vertices.data(), vertices.size()), 3) &&
+               !hasSelfIntersections(std::span(vertices.data(), vertices.size()));
+    }
+
+    bool Triangle::isEquilateral() const noexcept {
+        if (!isValid()) {
+            return false;
+        }
+        const auto& vertices = points();
+        const double a = distance(vertices[0], vertices[1]);
+        const double b = distance(vertices[1], vertices[2]);
+        const double c = distance(vertices[2], vertices[0]);
+        return nearlyEqual(a, b) && nearlyEqual(b, c);
+    }
+
+    void Triangle::printName(std::ostream& stream) const {
+        stream << "Triangle";
+    }
+
+    void Triangle::printAttributes(std::ostream& stream) const {
+        for (std::size_t i = 0; i < points().size(); ++i) {
+            if (i != 0) stream << ' ';
+            stream << points()[i];
+        }
+    }
+
+    std::istream& Triangle::read(std::istream& stream) {
+        readPoints(stream, 3);
+        return stream;
+    }
+
+    Square::Square(points_vec&& points) noexcept : Polygon(std::move(points)) {}
+
+    bool Square::isValid() const noexcept {
+        const auto& vertices = points();
+        const std::span pts(vertices.data(), vertices.size());
+        if (!validVertices(pts, 4) || hasSelfIntersections(pts)) {
+            return false;
+        }
+
+        double sides[4];
+        for (std::size_t i = 0; i < 4; ++i) {
+            sides[i] = distance(vertices[i], vertices[(i + 1) % 4]);
+            if (!nearlyEqual(sides[0], sides[i])) {
+                return false;
+            }
+        }
+
+        for (std::size_t i = 0; i < 4; ++i) {
+            const Point& previous = vertices[(i + 3) % 4];
+            const Point& current = vertices[i];
+            const Point& next = vertices[(i + 1) % 4];
+            const double dot = (previous.x - current.x) * (next.x - current.x) +
+                               (previous.y - current.y) * (next.y - current.y);
+            if (std::fabs(dot) > EPS * std::max(1.0, sides[i] * sides[(i + 3) % 4])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    double Square::side() const noexcept {
+        if (points().size() != 4) {
+            return 0.0;
+        }
+        return distance(points()[0], points()[1]);
+    }
+
+    void Square::printName(std::ostream& stream) const {
+        stream << "Square";
+    }
+
+    void Square::printAttributes(std::ostream& stream) const {
+        for (std::size_t i = 0; i < points().size(); ++i) {
+            if (i != 0) stream << ' ';
+            stream << points()[i];
+        }
+    }
+
+    std::istream& Square::read(std::istream& stream) {
+        readPoints(stream, 4);
+        return stream;
+    }
+
+    Pentagon::Pentagon(points_vec&& points) noexcept : Polygon(std::move(points)) {}
+
+    bool Pentagon::isValid() const noexcept {
+        const auto& vertices = points();
+        const std::span pts(vertices.data(), vertices.size());
+        return validVertices(pts, 5) && !hasSelfIntersections(pts);
+    }
+
+    bool Pentagon::isRegular() const noexcept {
+        if (!isValid()) {
+            return false;
+        }
+
+        const auto& vertices = points();
+        const double firstSide = distance(vertices[0], vertices[1]);
+        const double regularAngleCosine = std::cos(3.0 * std::numbers::pi / 5.0);
+        for (std::size_t i = 0; i < 5; ++i) {
+            const Point& previous = vertices[(i + 4) % 5];
+            const Point& current = vertices[i];
+            const Point& next = vertices[(i + 1) % 5];
+            const double side = distance(current, next);
+            if (!nearlyEqual(firstSide, side)) {
+                return false;
+            }
+
+            const double ax = previous.x - current.x;
+            const double ay = previous.y - current.y;
+            const double bx = next.x - current.x;
+            const double by = next.y - current.y;
+            const double cosine = (ax * bx + ay * by) / (distance(previous, current) * side);
+            if (!nearlyEqual(cosine, regularAngleCosine)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void Pentagon::printName(std::ostream& stream) const {
+        stream << "Pentagon";
+    }
+
+    void Pentagon::printAttributes(std::ostream& stream) const {
+        for (std::size_t i = 0; i < points().size(); ++i) {
+            if (i != 0) stream << ' ';
+            stream << points()[i];
+        }
+    }
+
+    std::istream& Pentagon::read(std::istream& stream) {
+        readPoints(stream, 5);
+        return stream;
     }
 
 } //ns polygons
