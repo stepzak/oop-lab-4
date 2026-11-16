@@ -1,8 +1,10 @@
 #include "polygons.hpp"
+#include "polygon_collection.hpp"
 
 #include <array>
 #include <cmath>
 #include <memory>
+#include <numbers>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -164,4 +166,70 @@ TEST(PolymorphismTest, BasePointersDispatchMetricVirtually) {
         totalMetric += figure->metric();
     }
     EXPECT_DOUBLE_EQ(totalMetric, 10.0);
+}
+
+TEST(PolygonCollectionTest, StartsEmptyWithZeroMetric) {
+    polygons::PolygonCollection collection;
+    EXPECT_TRUE(collection.empty());
+    EXPECT_EQ(collection.size(), 0U);
+    EXPECT_DOUBLE_EQ(collection.totalMetric(), 0.0);
+}
+
+TEST(PolygonCollectionTest, OwnsDifferentPolygonTypesAndSumsMetrics) {
+    const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
+    const auto square = Polygon::fromVertices<Square>(squarePoints);
+    ASSERT_TRUE(triangle.has_value());
+    ASSERT_TRUE(square.has_value());
+
+    polygons::PolygonCollection collection;
+    collection.add(std::make_unique<Triangle>(*triangle));
+    collection.add(std::make_unique<Square>(*square));
+
+    EXPECT_EQ(collection.size(), 2U);
+    EXPECT_DOUBLE_EQ(collection.totalMetric(), 10.0);
+    EXPECT_NE(dynamic_cast<Triangle*>(&collection.at(0)), nullptr);
+    EXPECT_NE(dynamic_cast<Square*>(&collection.at(1)), nullptr);
+}
+
+TEST(PolygonCollectionTest, SupportsRangeIteration) {
+    const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
+    ASSERT_TRUE(triangle.has_value());
+    polygons::PolygonCollection collection;
+    collection.add(std::make_unique<Triangle>(*triangle));
+
+    double total = 0.0;
+    std::size_t count = 0;
+    for (const auto& polygon : collection) {
+        ASSERT_NE(polygon, nullptr);
+        total += polygon->metric();
+        ++count;
+    }
+    EXPECT_EQ(count, 1U);
+    EXPECT_DOUBLE_EQ(total, 6.0);
+}
+
+TEST(PolygonCollectionTest, EraseRemovesElementAndUpdatesMetric) {
+    const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
+    const auto square = Polygon::fromVertices<Square>(squarePoints);
+    ASSERT_TRUE(triangle.has_value());
+    ASSERT_TRUE(square.has_value());
+    polygons::PolygonCollection collection;
+    collection.add(std::make_unique<Triangle>(*triangle));
+    collection.add(std::make_unique<Square>(*square));
+
+    EXPECT_TRUE(collection.erase(0));
+    EXPECT_EQ(collection.size(), 1U);
+    EXPECT_DOUBLE_EQ(collection.totalMetric(), 4.0);
+    EXPECT_FALSE(collection.erase(1));
+}
+
+TEST(PolygonCollectionTest, ClearDestroysAllOwnedPolygons) {
+    const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
+    ASSERT_TRUE(triangle.has_value());
+    polygons::PolygonCollection collection;
+    collection.add(std::make_unique<Triangle>(*triangle));
+    collection.clear();
+
+    EXPECT_TRUE(collection.empty());
+    EXPECT_DOUBLE_EQ(collection.totalMetric(), 0.0);
 }

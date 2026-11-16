@@ -31,6 +31,12 @@ if(BUILD_TESTING)
     target_link_libraries(oop_lab_4_tests PRIVATE polygons_lib GTest::gtest_main)
     target_compile_options(oop_lab_4_tests PRIVATE -Wall -Wextra -Wpedantic)
 
+    add_executable(small_vec_tests tests/small_vec_test.cpp)
+    target_include_directories(small_vec_tests PRIVATE include)
+    target_link_libraries(small_vec_tests PRIVATE GTest::gtest_main)
+    target_compile_options(small_vec_tests PRIVATE -Wall -Wextra -Wpedantic)
+
     include(GoogleTest)
     gtest_discover_tests(oop_lab_4_tests)
+    gtest_discover_tests(small_vec_tests)
 endif()
