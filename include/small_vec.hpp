@@ -157,7 +157,10 @@ namespace small_vec {
             }
         }
 
-        void swap(small_vec& b) noexcept(std::is_nothrow_move_constructible_v<T> && std::is_nothrow_swappable_v<T>) {
+        void swap(small_vec& b) noexcept(
+            (std::is_nothrow_move_constructible_v<T> || std::is_nothrow_copy_constructible_v<T>)
+            && std::is_nothrow_swappable_v<T>)
+        {
             if (this == &b) return;
             using std::swap;
             auto& a = *this;
