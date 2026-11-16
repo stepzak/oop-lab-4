@@ -95,15 +95,25 @@ TEST(FactoryTest, ReportsSelfIntersection) {
     EXPECT_EQ(error, polygons::PolygonError::SelfIntersection);
 }
 
-TEST(StreamTest, OutputContainsNameVerticesMetricAndCenter) {
+TEST(StreamTest, OutputUsesCoordinateInputFormat) {
     const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
     ASSERT_TRUE(triangle.has_value());
     std::ostringstream output;
     output << *triangle;
-    EXPECT_NE(output.str().find("Triangle"), std::string::npos);
-    EXPECT_NE(output.str().find("(4, 0)"), std::string::npos);
-    EXPECT_NE(output.str().find("Metric: 6"), std::string::npos);
-    EXPECT_NE(output.str().find("Center:"), std::string::npos);
+    EXPECT_EQ(output.str(), "0 0 4 0 2 3\n");
+}
+
+TEST(StreamTest, OutputCanBeReadBackIntoSameType) {
+    const auto original = Polygon::fromVertices<Triangle>(trianglePoints);
+    ASSERT_TRUE(original.has_value());
+    Triangle restored = *original;
+    std::stringstream stream;
+    stream << *original;
+    stream >> restored;
+
+    EXPECT_FALSE(stream.fail());
+    EXPECT_DOUBLE_EQ(restored.metric(), original->metric());
+    EXPECT_TRUE(restored == *original);
 }
 
 TEST(StreamTest, ReadsCoordinatesAndComputesMetric) {
@@ -175,6 +185,12 @@ TEST(PolygonCollectionTest, StartsEmptyWithZeroMetric) {
     EXPECT_DOUBLE_EQ(collection.totalMetric(), 0.0);
 }
 
+TEST(PolygonCollectionTest, EmplaceRejectsInvalidVertices) {
+    polygons::PolygonCollection collection;
+    EXPECT_THROW(collection.emplace<Square>(rectanglePoints), std::invalid_argument);
+    EXPECT_TRUE(collection.empty());
+}
+
 TEST(PolygonCollectionTest, OwnsDifferentPolygonTypesAndSumsMetrics) {
     const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
     const auto square = Polygon::fromVertices<Square>(squarePoints);
@@ -182,8 +198,8 @@ TEST(PolygonCollectionTest, OwnsDifferentPolygonTypesAndSumsMetrics) {
     ASSERT_TRUE(square.has_value());
 
     polygons::PolygonCollection collection;
-    collection.add(std::make_unique<Triangle>(*triangle));
-    collection.add(std::make_unique<Square>(*square));
+    collection.emplace<Triangle>(trianglePoints);
+    collection.emplace<Square>(squarePoints);
 
     EXPECT_EQ(collection.size(), 2U);
     EXPECT_DOUBLE_EQ(collection.totalMetric(), 10.0);
@@ -195,7 +211,7 @@ TEST(PolygonCollectionTest, SupportsRangeIteration) {
     const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
     ASSERT_TRUE(triangle.has_value());
     polygons::PolygonCollection collection;
-    collection.add(std::make_unique<Triangle>(*triangle));
+    collection.emplace<Triangle>(trianglePoints);
 
     double total = 0.0;
     std::size_t count = 0;
@@ -214,8 +230,8 @@ TEST(PolygonCollectionTest, EraseRemovesElementAndUpdatesMetric) {
     ASSERT_TRUE(triangle.has_value());
     ASSERT_TRUE(square.has_value());
     polygons::PolygonCollection collection;
-    collection.add(std::make_unique<Triangle>(*triangle));
-    collection.add(std::make_unique<Square>(*square));
+    collection.emplace<Triangle>(trianglePoints);
+    collection.emplace<Square>(squarePoints);
 
     EXPECT_TRUE(collection.erase(0));
     EXPECT_EQ(collection.size(), 1U);
@@ -227,7 +243,7 @@ TEST(PolygonCollectionTest, ClearDestroysAllOwnedPolygons) {
     const auto triangle = Polygon::fromVertices<Triangle>(trianglePoints);
     ASSERT_TRUE(triangle.has_value());
     polygons::PolygonCollection collection;
-    collection.add(std::make_unique<Triangle>(*triangle));
+    collection.emplace<Triangle>(trianglePoints);
     collection.clear();
 
     EXPECT_TRUE(collection.empty());

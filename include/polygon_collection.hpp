@@ -6,6 +6,7 @@
 #include <concepts>
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <utility>
 
@@ -34,10 +35,14 @@ namespace polygons {
             polygons_.push_back(std::move(polygon));
         }
 
-        template<typename T, typename... Args>
+        template<typename T>
             requires std::derived_from<T, Polygon>
-        T& emplace(Args&&... args) {
-            auto polygon = std::make_unique<T>(std::forward<Args>(args)...);
+        T& emplace(std::span<const Point> vertices) {
+            auto value = Polygon::fromVertices<T>(vertices);
+            if (!value) {
+                throw std::invalid_argument("PolygonCollection cannot add an invalid polygon");
+            }
+            auto polygon = std::make_unique<T>(std::move(*value));
             T& result = *polygon;
             add(std::move(polygon));
             return result;
@@ -86,7 +91,7 @@ namespace polygons {
             return polygons_.begin();
         }
 
-        const_iterator begin() const noexcept {
+        [[nodiscard]] const_iterator begin() const noexcept {
             return polygons_.begin();
         }
 
@@ -94,7 +99,7 @@ namespace polygons {
             return polygons_.end();
         }
 
-        const_iterator end() const noexcept {
+        [[nodiscard]] const_iterator end() const noexcept {
             return polygons_.end();
         }
     };

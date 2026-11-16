@@ -142,16 +142,7 @@ namespace polygons {
     }
 
     std::ostream &operator<<(std::ostream &stream, const Polygon &polygon) {
-        polygon.printName(stream);
-        stream << '\n';
-        polygon.printAttributes(stream);
-        auto center = polygon.center();
-        stream << '\n' << "Metric: " << polygon.metric() << '\n' << "Center: ";
-        if (center.has_value()) {
-            stream << center.value();
-        } else {
-            stream << "none";
-        }
+        polygon.writeAttributes(stream);
         stream << '\n';
         return stream;
     }
@@ -200,14 +191,10 @@ namespace polygons {
         return nearlyEqual(a, b) && nearlyEqual(b, c);
     }
 
-    void Triangle::printName(std::ostream& stream) const {
-        stream << "Triangle";
-    }
-
-    void Triangle::printAttributes(std::ostream& stream) const {
+    void Triangle::writeAttributes(std::ostream& stream) const {
         for (std::size_t i = 0; i < points().size(); ++i) {
             if (i != 0) stream << ' ';
-            stream << points()[i];
+            stream << points()[i].x << ' ' << points()[i].y;
         }
     }
 
@@ -253,14 +240,10 @@ namespace polygons {
         return distance(points()[0], points()[1]);
     }
 
-    void Square::printName(std::ostream& stream) const {
-        stream << "Square";
-    }
-
-    void Square::printAttributes(std::ostream& stream) const {
+    void Square::writeAttributes(std::ostream& stream) const {
         for (std::size_t i = 0; i < points().size(); ++i) {
             if (i != 0) stream << ' ';
-            stream << points()[i];
+            stream << points()[i].x << ' ' << points()[i].y;
         }
     }
 
@@ -306,14 +289,10 @@ namespace polygons {
         return true;
     }
 
-    void Pentagon::printName(std::ostream& stream) const {
-        stream << "Pentagon";
-    }
-
-    void Pentagon::printAttributes(std::ostream& stream) const {
+    void Pentagon::writeAttributes(std::ostream& stream) const {
         for (std::size_t i = 0; i < points().size(); ++i) {
             if (i != 0) stream << ' ';
-            stream << points()[i];
+            stream << points()[i].x << ' ' << points()[i].y;
         }
     }
 

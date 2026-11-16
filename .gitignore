@@ -31,3 +31,4 @@ compile_commands.json
 # misc
 *.iml
 .DS_Store
+build-*/

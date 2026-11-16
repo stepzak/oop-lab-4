@@ -60,8 +60,7 @@ namespace polygons {
         Polygon& operator=(Polygon&&) noexcept = default;
         explicit Polygon(points_vec&& points) noexcept;
 
-        virtual void printName(std::ostream& stream) const = 0;
-        virtual void printAttributes(std::ostream& stream) const = 0;
+        virtual void writeAttributes(std::ostream& stream) const = 0;
         virtual std::istream& read(std::istream& stream) = 0;
         bool readPoints(std::istream& stream, std::size_t count);
         [[nodiscard]] const points_vec& points() const noexcept;
@@ -72,9 +71,8 @@ namespace polygons {
         template<typename T>
         [[nodiscard]] static std::optional<T> fromVerticesOwnedExplicit(points_vec&& vertices, PolygonError& error)
         noexcept(std::is_nothrow_constructible_v<T, points_vec&&> && std::is_nothrow_move_constructible_v<T>)
+        requires std::derived_from<T, Polygon>
         {
-            static_assert(std::derived_from<T, Polygon>, "T must be derived from Polygon");
-
             if (vertices.size() < 3) {
                 error = PolygonError::TooFewPoints;
                 return std::nullopt;
@@ -133,34 +131,37 @@ namespace polygons {
     };
 
     class Triangle final : public Polygon {
+        friend class Polygon;
     protected:
-        void printName(std::ostream& stream) const override;
-        void printAttributes(std::ostream& stream) const override;
+        void writeAttributes(std::ostream& stream) const override;
         std::istream& read(std::istream& stream) override;
-    public:
+    private:
         explicit Triangle(points_vec&& points) noexcept;
+    public:
         [[nodiscard]] bool isValid() const noexcept override;
         [[nodiscard]] bool isEquilateral() const noexcept;
     };
 
     class Square final : public Polygon {
+        friend class Polygon;
     protected:
-        void printName(std::ostream& stream) const override;
-        void printAttributes(std::ostream& stream) const override;
+        void writeAttributes(std::ostream& stream) const override;
         std::istream& read(std::istream& stream) override;
-    public:
+    private:
         explicit Square(points_vec&& points) noexcept;
+    public:
         [[nodiscard]] bool isValid() const noexcept override;
         [[nodiscard]] double side() const noexcept;
     };
 
     class Pentagon final : public Polygon {
+        friend class Polygon;
     protected:
-        void printName(std::ostream& stream) const override;
-        void printAttributes(std::ostream& stream) const override;
+        void writeAttributes(std::ostream& stream) const override;
         std::istream& read(std::istream& stream) override;
-    public:
+    private:
         explicit Pentagon(points_vec&& points) noexcept;
+    public:
         [[nodiscard]] bool isValid() const noexcept override;
         [[nodiscard]] bool isRegular() const noexcept;
     };
